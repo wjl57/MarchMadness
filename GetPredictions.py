@@ -66,43 +66,6 @@ def extract_matchup_divs(content, matchup_id_min, matchup_id_max):
             yield matchup_div
 
 
-#
-# def calculate_region(matchup_id):
-#     if matchup_id < 8:
-#         return "West"
-#     if matchup_id < 16:
-#         return "East"
-#     if matchup_id < 24:
-#         return "South"
-#     if matchup_id < 32:
-#         return "Midwest"
-#     if matchup_id < 36:
-#         return "West"
-#     if matchup_id < 40:
-#         return "East"
-#     if matchup_id < 44:
-#         return "South"
-#     if matchup_id < 48:
-#         return "Midwest"
-#     if matchup_id < 50:
-#         return "West"
-#     if matchup_id < 52:
-#         return "East"
-#     if matchup_id < 54:
-#         return "South"
-#     if matchup_id < 56:
-#         return "Midwest"
-#     if matchup_id < 57:
-#         return "West"
-#     if matchup_id < 58:
-#         return "East"
-#     if matchup_id < 59:
-#         return "South"
-#     if matchup_id < 60:
-#         return "Midwest"
-#     return "Final Four"
-
-
 def calculate_team_region(team_id):
     if 0 < team_id <= 16:
         return "West"
@@ -145,15 +108,33 @@ class ActualMatchup:
         self.matchup_div = matchup_div
         game_progress = self.matchup_div.find("a", {"class": "gameProgress final"})
         self.game_complete = game_progress is not None
+        self.region = self.calculate_region()
         if self.game_complete:
-            print(matchup_id)
             score_away_span = game_progress.select("span.score.away")[0]
             score_home_span = game_progress.select("span.score.home")[0]
             self.score_away = int(score_away_span.text)
             self.score_home = int(score_home_span.text)
+            self.team_1 = ActualMatchup.calculate_team(self.matchup_div.select("div.slot.s_1")[0])
+            self.team_2 = ActualMatchup.calculate_team(self.matchup_div.select("div.slot.s_2")[0])
         else:
             self.score_away = None
             self.score_home = None
+            self.team_1 = None
+            self.team_2 = None
+
+    @staticmethod
+    def calculate_team(slot_div):
+        print(slot_div)
+        team_id_str = slot_div["data-teamid"]
+        print(team_id_str)
+        team_id = int(team_id_str)
+        actual_team_span = slot_div.find("span", {"class": "actual"})
+        # print(actual_team_span)
+        team_name = actual_team_span.find("span", {"class": "name"}).text
+        seed_span = actual_team_span.find("span", {"class": "seed"})
+        seed = int(seed_span.text)
+        return Team(team_name, seed, team_id)
+
         # self.team_1 = team_1,
         # self.team_2 = team_2,
         # self.game_complete = game_complete
@@ -161,12 +142,50 @@ class ActualMatchup:
         # self.team_2_score = team_2_score
         # self.region = team_1.region if team_1.region == team_2.region else "No region"
 
+    def calculate_region(self):
+        if self.matchup_id < 8:
+            return "West"
+        if self.matchup_id < 16:
+            return "East"
+        if self.matchup_id < 24:
+            return "South"
+        if self.matchup_id < 32:
+            return "Midwest"
+        if self.matchup_id < 36:
+            return "West"
+        if self.matchup_id < 40:
+            return "East"
+        if self.matchup_id < 44:
+            return "South"
+        if self.matchup_id < 48:
+            return "Midwest"
+        if self.matchup_id < 50:
+            return "West"
+        if self.matchup_id < 52:
+            return "East"
+        if self.matchup_id < 54:
+            return "South"
+        if self.matchup_id < 56:
+            return "Midwest"
+        if self.matchup_id < 57:
+            return "West"
+        if self.matchup_id < 58:
+            return "East"
+        if self.matchup_id < 59:
+            return "South"
+        if self.matchup_id < 60:
+            return "Midwest"
+        return "Final Four"
+
     def __repr__(self):
         # s = self.matchup_id
+        s = "Matchup ID: " + str(self.matchup_id) + " (" + self.region + ")\n"
+        if self.team_1 is not None and self.team_2 is not None:
+            s += str(self.team_1) + " vs " + str(self.team_2) + "\n"
         if self.game_complete:
-            s = "Matchup ID: " + str(self.matchup_id) + ", Final Score: (" + str(self.score_away) + " to " + str(self.score_home) + ")\n"
+            s += "Final Score: " + str(self.score_away) + " to " + str(self.score_home) + "\n"
         else:
-            s = "Matchup ID: " + str(self.matchup_id) + ", Game not started yet\n"
+            s += "Game not started yet\n"
         # s += "Team ID: " + str(self.team_id) + ", "
         # s += "Region: " + self.region + "\n"
         return s
@@ -183,6 +202,10 @@ class Team:
         s = self.name + " (" + str(self.seed) + ")\n"
         s += "Team ID: " + str(self.team_id) + ", "
         s += "Region: " + self.region + "\n"
+        return s
+
+    def __str__(self):
+        s = self.name + " (" + str(self.seed) + ")"
         return s
 
 
@@ -236,6 +259,7 @@ print("MATCHUPS")
 print("------------------------------------------------------")
 for actual_matchup in all_actual_matchups:
     print(actual_matchup)
+
 print("------------------------------------------------------")
 print()
 print()
