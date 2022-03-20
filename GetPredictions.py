@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 from collections import Counter
 import statistics
 import Constants
+import numpy as np
+import matplotlib.pyplot as plt
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -36,7 +38,7 @@ def set_all_teams():
         slots = matchup.find_all("div", "slot")
         for slot in slots:
             team = slot.find("span", "name").text
-            seed = slot.find("span", "seed").text
+            seed = int(slot.find("span", "seed").text)
             all_teams.add(Team(team, seed))
     return all_teams
 
@@ -82,7 +84,7 @@ class Team:
         self.seed = seed
 
     def __repr__(self):
-        return self.name + " (" + self.seed + ")"
+        return self.name + " (" + str(self.seed) + ")"
 
 
 class Entry:
@@ -138,6 +140,8 @@ for team in all_teams:
     # predicted_wins = [entry.picks_counter[team.name] for entry in all_entries]
     predicted_result = PredictedResults(team, predicted_wins_dict)
     all_predicted_results.append(predicted_result)
+# Order predictions by seed number
+all_predicted_results = sorted(all_predicted_results, key=lambda pr: pr.team.seed)
 
 for predicted_result in all_predicted_results:
     print(predicted_result)
@@ -159,3 +163,11 @@ no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
 print("NO WINS")
 for pr in no_wins_predicted:
     print(pr.team)
+
+
+x = [pr.team.seed for pr in all_predicted_results]
+y = [pr.average_wins for pr in all_predicted_results]
+colors = np.random.rand(4)
+area = 5
+plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+plt.show()
