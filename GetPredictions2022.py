@@ -1,7 +1,10 @@
+from __future__ import print_function
 import requests
 from bs4 import BeautifulSoup
-from collections import defaultdict
 from collections import Counter
+from collections import defaultdict
+import statistics
+
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -10,17 +13,17 @@ headers = {
 
 entries = {
     "Will": 53914595,
-    # "Harry": 61337382,
-    # "Cathy": 66791702,
-    # "Breton": 64261292,
-    # "Louis": 65511775,
-    # "Vitaliy": 65326118,
-    # "JinWang": 63398705,
-    # "Ted": 63894438,
-    # "Jared": 69932613,
-    # "Thomas": 57461192,
-    # "Andrew": 54503876,
-    # "Andy": 64811291,
+    "Harry": 61337382,
+    "Cathy": 66791702,
+    "Breton": 64261292,
+    "Louis": 65511775,
+    "Vitaliy": 65326118,
+    "JinWang": 63398705,
+    "Ted": 63894438,
+    "Jared": 69932613,
+    "Thomas": 57461192,
+    "Andrew": 54503876,
+    "Andy": 64811291,
     "Check": 56824064,
     "Caitlin": 66188779
 }
@@ -87,7 +90,7 @@ def get_content_for(name):
     return page.content
 
 
-class User:
+class Entry:
     def __init__(self, name, bracket_id):
         self.name = name
         self.bracket_id = bracket_id
@@ -96,15 +99,52 @@ class User:
         self.picks_counter = extract_all_picks_counter(content)
 
 
+class PredictedResults:
+    def __init__(self, team, predicted_wins):
+        self.predicted_wins = predicted_wins
+        self.team = team
+        self.average_wins = sum(predicted_wins) / len(predicted_wins)
+        self.std_dev = statistics.stdev(predicted_wins)
+
+    def __repr__(self):
+        s = "------------------------------------------------------\n"
+        s += "Team: " + self.team + "\n"
+        s += "------------------------------------------------------\n"
+        s += "Predicted Wins: " + str(self.predicted_wins) + "\n"
+        s += "Average Wins: " + str(self.average_wins) + "\n"
+        s += "Std Dev: " + str(self.std_dev) + "\n"
+        return s
+
+
 set_all_teams()
 print(all_teams)
 
+all_entries = []
 for name, bracket_id in entries.items():
-    # picks = extract_all_picks_counter(page.content)
-    user = User(name, bracket_id)
-    # page = requests.get("http://fantasy.espn.com/tournament-challenge-bracket/2022/en/entry?entryID=" + str(entry_id), headers=headers)
+    entry = Entry(name, bracket_id)
+    all_entries.append(entry)
     print("------------------------------------------------------")
-    print(user.name)
+    print(entry.name)
     print("------------------------------------------------------")
-    print(user.picks_counter)
-    # teams[name] = list(extract_predictions(page.content))
+    print(entry.picks_counter)
+
+all_predicted_results = []
+for team in all_teams:
+    predicted_wins = [entry.picks_counter[team] for entry in all_entries]
+    predicted_result = PredictedResults(team, predicted_wins)
+    all_predicted_results.append(predicted_result)
+
+for predicted_result in all_predicted_results:
+    print(predicted_result)
+
+
+predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
+predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
+
+print("HIGHEST AVERAGE")
+for pr in predicted_result_average_wins[0:5]:
+    print(pr)
+
+print("HIGHEST STD DEV")
+for pr in predicted_result_std_dev[0:5]:
+    print(pr)
