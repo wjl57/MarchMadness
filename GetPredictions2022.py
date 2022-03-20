@@ -2,7 +2,6 @@ from __future__ import print_function
 import requests
 from bs4 import BeautifulSoup
 from collections import Counter
-from collections import defaultdict
 import statistics
 
 
@@ -51,7 +50,9 @@ def set_all_teams():
     for matchup in extract_matchups(content, min_matchup_id_round_64, max_matchup_id_round_64):
         slots = matchup.find_all("div", "slot")
         for slot in slots:
-            all_teams.add(slot.find("span", "name").text)
+            team = slot.find("span", "name").text
+            seed = slot.find("span", "seed").text
+            all_teams.add(Team(team, seed))
     return all_teams
 
 
@@ -90,6 +91,15 @@ def get_content_for(name):
     return page.content
 
 
+class Team:
+    def __init__(self, name, seed):
+        self.name = name
+        self.seed = seed
+
+    def __repr__(self):
+        return self.name + " (" + self.seed + ")"
+
+
 class Entry:
     def __init__(self, name, bracket_id):
         self.name = name
@@ -100,19 +110,28 @@ class Entry:
 
 
 class PredictedResults:
-    def __init__(self, team, predicted_wins):
+    def __init__(self, team, predicted_wins_dict):
+        self.predicted_wins_dict = predicted_wins_dict
+        predicted_wins = sorted(predicted_wins_dict.values(), reverse=True)
         self.predicted_wins = predicted_wins
         self.team = team
         self.average_wins = sum(predicted_wins) / len(predicted_wins)
         self.std_dev = statistics.stdev(predicted_wins)
+        self.min = min(predicted_wins)
+        self.max = max(predicted_wins)
+        self.std_dev_min = 0 if self.std_dev == 0 else (self.min - self.average_wins) / self.std_dev
+        self.std_dev_max = 0 if self.std_dev == 0 else (self.max - self.average_wins) / self.std_dev
 
     def __repr__(self):
         s = "------------------------------------------------------\n"
-        s += "Team: " + self.team + "\n"
+        s += "Team: " + repr(self.team) + "\n"
         s += "------------------------------------------------------\n"
         s += "Predicted Wins: " + str(self.predicted_wins) + "\n"
+        s += "Predicted Win Dict: " + str(self.predicted_wins_dict) + "\n"
         s += "Average Wins: " + str(self.average_wins) + "\n"
         s += "Std Dev: " + str(self.std_dev) + "\n"
+        s += "Range: " + str(self.min) + " to " + str(self.max) + "\n"
+        s += "Std Dev Range: " + str(self.std_dev_min) + " to " + str(self.std_dev_max) + "\n"
         return s
 
 
@@ -130,8 +149,9 @@ for name, bracket_id in entries.items():
 
 all_predicted_results = []
 for team in all_teams:
-    predicted_wins = [entry.picks_counter[team] for entry in all_entries]
-    predicted_result = PredictedResults(team, predicted_wins)
+    predicted_wins_dict = {entry.name: entry.picks_counter[team.name] for entry in all_entries}
+    # predicted_wins = [entry.picks_counter[team.name] for entry in all_entries]
+    predicted_result = PredictedResults(team, predicted_wins_dict)
     all_predicted_results.append(predicted_result)
 
 for predicted_result in all_predicted_results:
@@ -148,3 +168,9 @@ for pr in predicted_result_average_wins[0:5]:
 print("HIGHEST STD DEV")
 for pr in predicted_result_std_dev[0:5]:
     print(pr)
+
+no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
+
+print("NO WINS")
+for pr in no_wins_predicted:
+    print(pr.team)
