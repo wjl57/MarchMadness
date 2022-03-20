@@ -28,32 +28,43 @@ championship_matchup_id = max_matchup_id_final_4 + 1
 entries = Constants.ENTRIES[Constants.YEAR]
 
 all_teams = []
+all_actual_matchups = []
 
 
 def set_all_teams():
     if len(all_teams) > 0:
         return all_teams
     content = get_content_for(next(iter(entries)))
-    for matchup in extract_matchups(content, min_matchup_id_round_64, max_matchup_id_round_64):
-        slots = matchup.find_all("div", "slot")
+    for matchup_div in extract_matchup_divs(content, min_matchup_id_round_64, max_matchup_id_round_64):
+        slots = matchup_div.find_all("div", "slot")
         for slot in slots:
             team = slot.find("span", "name").text
             team_id = int(slot["data-teamid"])
             seed = int(slot.find("span", "seed").text)
             all_teams.append(Team(team, seed, team_id))
-    return sorted(all_teams, key=lambda t: t.team_id)
+    # return sorted(all_teams, key=lambda t: t.team_id)
 
 
-def extract_matchups(content, matchup_id_min, matchup_id_max):
+def set_all_actual_matchups():
+    if len(all_actual_matchups) > 0:
+        return all_actual_matchups
+    content = get_content_for(next(iter(entries)))
+    for matchup_div in extract_matchup_divs(content, min_matchup_id_round_64, championship_matchup_id):
+        matchup_id = int(matchup_div["data-index"])
+        actual_matchup = ActualMatchup(matchup_id, matchup_div)
+        all_actual_matchups.append(actual_matchup)
+
+
+def extract_matchup_divs(content, matchup_id_min, matchup_id_max):
     soup = BeautifulSoup(content, "html.parser")
     bracket_wrapper = soup.find("div", {"class": "bracketWrapper"})
-    matchups = bracket_wrapper.find_all("div", {"class": "matchup"})
-    for matchup in matchups:
-        matchup_id = int(matchup["data-index"])
-        # game_complete = matchups.find("span", {"class": "clock"}).text == 'Final'
+    matchup_divs = bracket_wrapper.find_all("div", {"class": "matchup"})
+    for matchup_div in matchup_divs:
+        matchup_id = int(matchup_div["data-index"])
         # pick the matchups we care about
         if matchup_id_min <= matchup_id <= matchup_id_max:
-            yield matchup
+            yield matchup_div
+
 
 #
 # def calculate_region(matchup_id):
@@ -106,7 +117,7 @@ def calculate_team_region(team_id):
 
 def extract_picks(content, matchup_id_min, matchup_id_max):
     predicted_winners = []
-    for matchup in extract_matchups(content, matchup_id_min, matchup_id_max):
+    for matchup in extract_matchup_divs(content, matchup_id_min, matchup_id_max):
         slots = matchup.find_all("div", "slot")
         for slot in slots:
             selected_to_advance = slot.find("span", {"class", "selectedToAdvance"})
@@ -126,6 +137,39 @@ def get_content_for(name):
     url = "http://fantasy.espn.com/tournament-challenge-bracket/" + str(Constants.YEAR) + "/en/entry?entryID=" + str(entries[name])
     page = requests.get(url, headers=headers)
     return page.content
+
+
+class ActualMatchup:
+    def __init__(self, matchup_id, matchup_div):
+        self.matchup_id = matchup_id
+        self.matchup_div = matchup_div
+        game_progress = self.matchup_div.find("a", {"class": "gameProgress final"})
+        self.game_complete = game_progress is not None
+        if self.game_complete:
+            print(matchup_id)
+            score_away_span = game_progress.select("span.score.away")[0]
+            score_home_span = game_progress.select("span.score.home")[0]
+            self.score_away = int(score_away_span.text)
+            self.score_home = int(score_home_span.text)
+        else:
+            self.score_away = None
+            self.score_home = None
+        # self.team_1 = team_1,
+        # self.team_2 = team_2,
+        # self.game_complete = game_complete
+        # self.team_1_score = team_1_score
+        # self.team_2_score = team_2_score
+        # self.region = team_1.region if team_1.region == team_2.region else "No region"
+
+    def __repr__(self):
+        # s = self.matchup_id
+        if self.game_complete:
+            s = "Matchup ID: " + str(self.matchup_id) + ", Final Score: (" + str(self.score_away) + " to " + str(self.score_home) + ")\n"
+        else:
+            s = "Matchup ID: " + str(self.matchup_id) + ", Game not started yet\n"
+        # s += "Team ID: " + str(self.team_id) + ", "
+        # s += "Region: " + self.region + "\n"
+        return s
 
 
 class Team:
@@ -178,56 +222,71 @@ class PredictedResults:
 
 
 set_all_teams()
+set_all_actual_matchups()
+
+print("TEAMS")
+print("------------------------------------------------------")
 for team in all_teams:
     print(team)
+print("------------------------------------------------------")
+print()
+print()
+print("------------------------------------------------------")
+print("MATCHUPS")
+print("------------------------------------------------------")
+for actual_matchup in all_actual_matchups:
+    print(actual_matchup)
+print("------------------------------------------------------")
+print()
+print()
 
-all_entries = []
-for name, bracket_id in entries.items():
-    entry = Entry(name, bracket_id)
-    all_entries.append(entry)
-    print("------------------------------------------------------")
-    print(entry.name)
-    print("------------------------------------------------------")
-    print(entry.picks_counter)
-
-all_predicted_results = []
-for team in all_teams:
-    predicted_wins_dict = {entry.name: entry.picks_counter[team.name] for entry in all_entries}
-    # predicted_wins = [entry.picks_counter[team.name] for entry in all_entries]
-    predicted_result = PredictedResults(team, predicted_wins_dict)
-    all_predicted_results.append(predicted_result)
-# Order predictions by seed number
-all_predicted_results = sorted(all_predicted_results, key=lambda pr: pr.team.seed)
-
-for predicted_result in all_predicted_results:
-    print(predicted_result)
-
-
-predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
-predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
-
-print("HIGHEST AVERAGE")
-for pr in predicted_result_average_wins[0:5]:
-    print(pr)
-
-print("HIGHEST STD DEV")
-for pr in predicted_result_std_dev[0:5]:
-    print(pr)
-
-print("LOWEST STD DEV")
-for pr in predicted_result_std_dev[-13:-8]:
-    print(pr)
-
-no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
-
-print("NO WINS")
-for pr in no_wins_predicted:
-    print(pr.team)
-
-
-x = [pr.team.seed for pr in all_predicted_results]
-y = [pr.average_wins for pr in all_predicted_results]
-colors = 'black'#np.random.rand(4)
-area = 10
-plt.scatter(x, y, s=area, c=colors, alpha=0.5)
-plt.show()
+# all_entries = []
+# for name, bracket_id in entries.items():
+#     entry = Entry(name, bracket_id)
+#     all_entries.append(entry)
+#     print("------------------------------------------------------")
+#     print(entry.name)
+#     print("------------------------------------------------------")
+#     print(entry.picks_counter)
+#
+# all_predicted_results = []
+# for team in all_teams:
+#     predicted_wins_dict = {entry.name: entry.picks_counter[team.name] for entry in all_entries}
+#     # predicted_wins = [entry.picks_counter[team.name] for entry in all_entries]
+#     predicted_result = PredictedResults(team, predicted_wins_dict)
+#     all_predicted_results.append(predicted_result)
+# # Order predictions by seed number
+# all_predicted_results = sorted(all_predicted_results, key=lambda pr: pr.team.seed)
+#
+# for predicted_result in all_predicted_results:
+#     print(predicted_result)
+#
+#
+# predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
+# predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
+#
+# print("HIGHEST AVERAGE")
+# for pr in predicted_result_average_wins[0:5]:
+#     print(pr)
+#
+# print("HIGHEST STD DEV")
+# for pr in predicted_result_std_dev[0:5]:
+#     print(pr)
+#
+# print("LOWEST STD DEV")
+# for pr in predicted_result_std_dev[-13:-8]:
+#     print(pr)
+#
+# no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
+#
+# print("NO WINS")
+# for pr in no_wins_predicted:
+#     print(pr.team)
+#
+#
+# x = [pr.team.seed for pr in all_predicted_results]
+# y = [pr.average_wins for pr in all_predicted_results]
+# colors = 'black'#np.random.rand(4)
+# area = 10
+# plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+# plt.show()
