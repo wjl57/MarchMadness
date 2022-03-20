@@ -6,6 +6,7 @@ import statistics
 import Constants
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -105,6 +106,7 @@ def get_content_for(name):
 class ActualMatchup:
     def __init__(self, matchup_id, matchup_div):
         self.matchup_id = matchup_id
+        self.round_number = self.calculate_round_number()
         self.matchup_div = matchup_div
         game_progress = self.matchup_div.find("a", {"class": "gameProgress final"})
         self.game_complete = game_progress is not None
@@ -142,6 +144,20 @@ class ActualMatchup:
         # self.team_2_score = team_2_score
         # self.region = team_1.region if team_1.region == team_2.region else "No region"
 
+    def calculate_round_number(self):
+        if min_matchup_id_round_64 <= self.matchup_id <= max_matchup_id_round_64:
+            return 1
+        if min_matchup_id_round_32 <= self.matchup_id <= max_matchup_id_round_32:
+            return 2
+        if min_matchup_id_sweet_16 <= self.matchup_id <= max_matchup_id_sweet_16:
+            return 3
+        if min_matchup_id_elite_8 <= self.matchup_id <= max_matchup_id_elite_8:
+            return 4
+        if min_matchup_id_final_4 <= self.matchup_id <= max_matchup_id_final_4:
+            return 5
+        if championship_matchup_id == self.matchup_id:
+            return 6
+
     def calculate_region(self):
         if self.matchup_id < 8:
             return "West"
@@ -175,11 +191,11 @@ class ActualMatchup:
             return "South"
         if self.matchup_id < 60:
             return "Midwest"
-        return "Final Four"
+        return "No region"
 
     def __repr__(self):
         # s = self.matchup_id
-        s = "Matchup ID: " + str(self.matchup_id) + " (" + self.region + ")\n"
+        s = "Matchup ID: " + str(self.matchup_id) + " (" + self.region + " Round " + str(self.round_number) + ")\n"
         if self.team_1 is not None and self.team_2 is not None:
             s += str(self.team_1) + " vs " + str(self.team_2) + "\n"
         if self.game_complete:
@@ -264,53 +280,53 @@ print("------------------------------------------------------")
 print()
 print()
 
-all_entries = []
-for name, bracket_id in entries.items():
-    entry = Entry(name, bracket_id)
-    all_entries.append(entry)
-    print("------------------------------------------------------")
-    print(entry.name)
-    print("------------------------------------------------------")
-    print(entry.picks_counter)
-
-all_predicted_results = []
-for team in all_teams:
-    predicted_wins_dict = {entry.name: entry.picks_counter[team.name] for entry in all_entries}
-    # predicted_wins = [entry.picks_counter[team.name] for entry in all_entries]
-    predicted_result = PredictedResults(team, predicted_wins_dict)
-    all_predicted_results.append(predicted_result)
-# Order predictions by seed number
-all_predicted_results = sorted(all_predicted_results, key=lambda pr: pr.team.seed)
-
-for predicted_result in all_predicted_results:
-    print(predicted_result)
-
-
-predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
-predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
-
-print("HIGHEST AVERAGE")
-for pr in predicted_result_average_wins[0:5]:
-    print(pr)
-
-print("HIGHEST STD DEV")
-for pr in predicted_result_std_dev[0:5]:
-    print(pr)
-
-print("LOWEST STD DEV")
-for pr in predicted_result_std_dev[-13:-8]:
-    print(pr)
-
-no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
-
-print("NO WINS")
-for pr in no_wins_predicted:
-    print(pr.team)
-
-
-x = [pr.team.seed for pr in all_predicted_results]
-y = [pr.average_wins for pr in all_predicted_results]
-colors = 'black'#np.random.rand(4)
-area = 10
-plt.scatter(x, y, s=area, c=colors, alpha=0.5)
-plt.show()
+# all_entries = []
+# for name, bracket_id in entries.items():
+#     entry = Entry(name, bracket_id)
+#     all_entries.append(entry)
+#     print("------------------------------------------------------")
+#     print(entry.name)
+#     print("------------------------------------------------------")
+#     print(entry.picks_counter)
+#
+# all_predicted_results = []
+# for team in all_teams:
+#     predicted_wins_dict = {entry.name: entry.picks_counter[team.name] for entry in all_entries}
+#     # predicted_wins = [entry.picks_counter[team.name] for entry in all_entries]
+#     predicted_result = PredictedResults(team, predicted_wins_dict)
+#     all_predicted_results.append(predicted_result)
+# # Order predictions by seed number
+# all_predicted_results = sorted(all_predicted_results, key=lambda pr: pr.team.seed)
+#
+# for predicted_result in all_predicted_results:
+#     print(predicted_result)
+#
+#
+# predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
+# predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
+#
+# print("HIGHEST AVERAGE")
+# for pr in predicted_result_average_wins[0:5]:
+#     print(pr)
+#
+# print("HIGHEST STD DEV")
+# for pr in predicted_result_std_dev[0:5]:
+#     print(pr)
+#
+# print("LOWEST STD DEV")
+# for pr in predicted_result_std_dev[-13:-8]:
+#     print(pr)
+#
+# no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
+#
+# print("NO WINS")
+# for pr in no_wins_predicted:
+#     print(pr.team)
+#
+#
+# x = [pr.team.seed for pr in all_predicted_results]
+# y = [pr.average_wins for pr in all_predicted_results]
+# colors = 'black'#np.random.rand(4)
+# area = 10
+# plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+# plt.show()
