@@ -264,53 +264,53 @@ print("------------------------------------------------------")
 print()
 print()
 
-# all_entries = []
-# for name, bracket_id in entries.items():
-#     entry = Entry(name, bracket_id)
-#     all_entries.append(entry)
-#     print("------------------------------------------------------")
-#     print(entry.name)
-#     print("------------------------------------------------------")
-#     print(entry.picks_counter)
-#
-# all_predicted_results = []
-# for team in all_teams:
-#     predicted_wins_dict = {entry.name: entry.picks_counter[team.name] for entry in all_entries}
-#     # predicted_wins = [entry.picks_counter[team.name] for entry in all_entries]
-#     predicted_result = PredictedResults(team, predicted_wins_dict)
-#     all_predicted_results.append(predicted_result)
-# # Order predictions by seed number
-# all_predicted_results = sorted(all_predicted_results, key=lambda pr: pr.team.seed)
-#
-# for predicted_result in all_predicted_results:
-#     print(predicted_result)
-#
-#
-# predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
-# predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
-#
-# print("HIGHEST AVERAGE")
-# for pr in predicted_result_average_wins[0:5]:
-#     print(pr)
-#
-# print("HIGHEST STD DEV")
-# for pr in predicted_result_std_dev[0:5]:
-#     print(pr)
-#
-# print("LOWEST STD DEV")
-# for pr in predicted_result_std_dev[-13:-8]:
-#     print(pr)
-#
-# no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
-#
-# print("NO WINS")
-# for pr in no_wins_predicted:
-#     print(pr.team)
-#
-#
-# x = [pr.team.seed for pr in all_predicted_results]
-# y = [pr.average_wins for pr in all_predicted_results]
-# colors = 'black'#np.random.rand(4)
-# area = 10
-# plt.scatter(x, y, s=area, c=colors, alpha=0.5)
-# plt.show()
+all_entries = []
+for name, bracket_id in entries.items():
+    entry = Entry(name, bracket_id)
+    all_entries.append(entry)
+    print("------------------------------------------------------")
+    print(entry.name)
+    print("------------------------------------------------------")
+    print(entry.picks_counter)
+
+all_predicted_results = []
+for team in all_teams:
+    predicted_wins_dict = {entry.name: entry.picks_counter[team.name] for entry in all_entries}
+    # predicted_wins = [entry.picks_counter[team.name] for entry in all_entries]
+    predicted_result = PredictedResults(team, predicted_wins_dict)
+    all_predicted_results.append(predicted_result)
+# Order predictions by seed number
+all_predicted_results = sorted(all_predicted_results, key=lambda pr: pr.team.seed)
+
+for predicted_result in all_predicted_results:
+    print(predicted_result)
+
+
+predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
+predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
+
+print("HIGHEST AVERAGE")
+for pr in predicted_result_average_wins[0:5]:
+    print(pr)
+
+print("HIGHEST STD DEV")
+for pr in predicted_result_std_dev[0:5]:
+    print(pr)
+
+print("LOWEST STD DEV")
+for pr in predicted_result_std_dev[-13:-8]:
+    print(pr)
+
+no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
+
+print("NO WINS")
+for pr in no_wins_predicted:
+    print(pr.team)
+
+
+x = [pr.team.seed for pr in all_predicted_results]
+y = [pr.average_wins for pr in all_predicted_results]
+colors = 'black'#np.random.rand(4)
+area = 10
+plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+plt.show()
