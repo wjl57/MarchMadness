@@ -3,28 +3,11 @@ import requests
 from bs4 import BeautifulSoup
 from collections import Counter
 import statistics
-
+import Constants
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                   'Chrome/70.0.3538.110 Safari/537.36 '
-}
-
-entries = {
-    "Will": 53914595,
-    "Harry": 61337382,
-    "Cathy": 66791702,
-    "Breton": 64261292,
-    "Louis": 65511775,
-    "Vitaliy": 65326118,
-    "JinWang": 63398705,
-    "Ted": 63894438,
-    "Jared": 69932613,
-    "Thomas": 57461192,
-    "Andrew": 54503876,
-    "Andy": 64811291,
-    "Check": 56824064,
-    "Caitlin": 66188779
 }
 
 total_teams = 64
@@ -39,6 +22,8 @@ max_matchup_id_elite_8 = max_matchup_id_sweet_16 + 4
 min_matchup_id_final_4 = max_matchup_id_elite_8 + 1
 max_matchup_id_final_4 = max_matchup_id_elite_8 + 2
 championship_matchup_id = max_matchup_id_final_4 + 1
+
+entries = Constants.ENTRIES[Constants.YEAR]
 
 all_teams = set()
 
@@ -86,7 +71,7 @@ def extract_all_picks_counter(content):
 
 
 def get_content_for(name):
-    url = "http://fantasy.espn.com/tournament-challenge-bracket/2022/en/entry?entryID=" + str(entries[name])
+    url = "http://fantasy.espn.com/tournament-challenge-bracket/" + str(Constants.YEAR) + "/en/entry?entryID=" + str(entries[name])
     page = requests.get(url, headers=headers)
     return page.content
 
