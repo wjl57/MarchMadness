@@ -27,7 +27,7 @@ championship_matchup_id = max_matchup_id_final_4 + 1
 
 entries = Constants.ENTRIES[Constants.YEAR]
 
-all_teams = set()
+all_teams = []
 
 
 def set_all_teams():
@@ -38,9 +38,10 @@ def set_all_teams():
         slots = matchup.find_all("div", "slot")
         for slot in slots:
             team = slot.find("span", "name").text
+            team_id = int(slot["data-teamid"])
             seed = int(slot.find("span", "seed").text)
-            all_teams.add(Team(team, seed))
-    return all_teams
+            all_teams.append(Team(team, seed, team_id))
+    return sorted(all_teams, key=lambda t: t.team_id)
 
 
 def extract_matchups(content, matchup_id_min, matchup_id_max):
@@ -49,9 +50,58 @@ def extract_matchups(content, matchup_id_min, matchup_id_max):
     matchups = bracket_wrapper.find_all("div", {"class": "matchup"})
     for matchup in matchups:
         matchup_id = int(matchup["data-index"])
+        # game_complete = matchups.find("span", {"class": "clock"}).text == 'Final'
         # pick the matchups we care about
         if matchup_id_min <= matchup_id <= matchup_id_max:
             yield matchup
+
+#
+# def calculate_region(matchup_id):
+#     if matchup_id < 8:
+#         return "West"
+#     if matchup_id < 16:
+#         return "East"
+#     if matchup_id < 24:
+#         return "South"
+#     if matchup_id < 32:
+#         return "Midwest"
+#     if matchup_id < 36:
+#         return "West"
+#     if matchup_id < 40:
+#         return "East"
+#     if matchup_id < 44:
+#         return "South"
+#     if matchup_id < 48:
+#         return "Midwest"
+#     if matchup_id < 50:
+#         return "West"
+#     if matchup_id < 52:
+#         return "East"
+#     if matchup_id < 54:
+#         return "South"
+#     if matchup_id < 56:
+#         return "Midwest"
+#     if matchup_id < 57:
+#         return "West"
+#     if matchup_id < 58:
+#         return "East"
+#     if matchup_id < 59:
+#         return "South"
+#     if matchup_id < 60:
+#         return "Midwest"
+#     return "Final Four"
+
+
+def calculate_team_region(team_id):
+    if 0 < team_id <= 16:
+        return "West"
+    if team_id <= 32:
+        return "East"
+    if team_id <= 48:
+        return "South"
+    if team_id <= 64:
+        return "Midwest"
+    raise Exception("Error calculating region for team " + str(team_id))
 
 
 def extract_picks(content, matchup_id_min, matchup_id_max):
@@ -79,12 +129,17 @@ def get_content_for(name):
 
 
 class Team:
-    def __init__(self, name, seed):
+    def __init__(self, name, seed, team_id):
         self.name = name
         self.seed = seed
+        self.team_id = team_id
+        self.region = calculate_team_region(team_id)
 
     def __repr__(self):
-        return self.name + " (" + str(self.seed) + ")"
+        s = self.name + " (" + str(self.seed) + ")\n"
+        s += "Team ID: " + str(self.team_id) + ", "
+        s += "Region: " + self.region + "\n"
+        return s
 
 
 class Entry:
@@ -123,7 +178,8 @@ class PredictedResults:
 
 
 set_all_teams()
-print(all_teams)
+for team in all_teams:
+    print(team)
 
 all_entries = []
 for name, bracket_id in entries.items():
@@ -158,6 +214,10 @@ print("HIGHEST STD DEV")
 for pr in predicted_result_std_dev[0:5]:
     print(pr)
 
+print("LOWEST STD DEV")
+for pr in predicted_result_std_dev[-13:-8]:
+    print(pr)
+
 no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
 
 print("NO WINS")
@@ -167,7 +227,7 @@ for pr in no_wins_predicted:
 
 x = [pr.team.seed for pr in all_predicted_results]
 y = [pr.average_wins for pr in all_predicted_results]
-colors = np.random.rand(4)
-area = 5
+colors = 'black'#np.random.rand(4)
+area = 10
 plt.scatter(x, y, s=area, c=colors, alpha=0.5)
 plt.show()
