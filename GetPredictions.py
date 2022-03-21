@@ -6,9 +6,16 @@ import requests
 from bs4 import BeautifulSoup
 from collections import Counter
 import statistics
+
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+
 import Constants
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import shutil
+from os.path import exists
+
 import math
 
 headers = {
@@ -27,13 +34,26 @@ def set_all_teams():
         return all_teams
     content = get_content_for(next(iter(entries)))
     for matchup_div in extract_matchup_divs(content, Constants.min_matchup_id_round_64, Constants.max_matchup_id_round_64):
-        slots = matchup_div.find_all("div", "slot")
-        for slot in slots:
-            team = slot.find("span", "name").text
-            team_id = int(slot["data-teamid"])
-            seed = int(slot.find("span", "seed").text)
-            all_teams.append(Team(team, seed, team_id))
-    # return sorted(all_teams, key=lambda t: t.team_id)
+        slot_divs = matchup_div.find_all("div", "slot")
+        for slot_div in slot_divs:
+            team = calculate_team(slot_div)
+            all_teams.append(team)
+
+
+def save_logo(abbrev, logo_url):
+    filename = 'icons/' + abbrev + '.png'
+    if exists(filename):
+        return filename
+    else:
+        r = requests.get(logo_url, stream=True)
+        if r.status_code == 200:
+            # Set decode_content value to True, otherwise the downloaded image file's size will be zero.
+            r.raw.decode_content = True
+
+            # Open a local file with wb ( write binary ) permission.
+            with open(filename, 'wb') as f:
+                shutil.copyfileobj(r.raw, f)
+        return filename
 
 
 def set_all_actual_matchups():
@@ -93,6 +113,18 @@ def get_content_for(name):
     return page.content
 
 
+def calculate_team(slot_div):
+    team_id = int(slot_div["data-teamid"])
+    actual_team_span = slot_div.find("span", {"class": "actual"})
+    team_name = actual_team_span.find("span", {"class": "name"}).text
+    seed = int(actual_team_span.find("span", {"class": "seed"}).text)
+    abbrev = actual_team_span.find("span", "abbrev").text
+    logo_tag = actual_team_span.find("img", {"class": "logo"})
+    logo_url = logo_tag["src"]
+    logo_file = save_logo(abbrev, logo_url)
+    return Team(team_name, seed, team_id, abbrev, logo_file)
+
+
 class ActualMatchup:
     def __init__(self, matchup_id, matchup_div):
         self.matchup_id = matchup_id
@@ -106,24 +138,13 @@ class ActualMatchup:
             score_home_span = game_progress.select("span.score.home")[0]
             self.score_away = int(score_away_span.text)
             self.score_home = int(score_home_span.text)
-            self.team_1 = ActualMatchup.calculate_team(self.matchup_div.select("div.slot.s_1")[0])
-            self.team_2 = ActualMatchup.calculate_team(self.matchup_div.select("div.slot.s_2")[0])
+            self.team_1 = calculate_team(self.matchup_div.select("div.slot.s_1")[0])
+            self.team_2 = calculate_team(self.matchup_div.select("div.slot.s_2")[0])
         else:
             self.score_away = None
             self.score_home = None
             self.team_1 = None
             self.team_2 = None
-
-    @staticmethod
-    def calculate_team(slot_div):
-        team_id_str = slot_div["data-teamid"]
-        team_id = int(team_id_str)
-        actual_team_span = slot_div.find("span", {"class": "actual"})
-        # print(actual_team_span)
-        team_name = actual_team_span.find("span", {"class": "name"}).text
-        seed_span = actual_team_span.find("span", {"class": "seed"})
-        seed = int(seed_span.text)
-        return Team(team_name, seed, team_id)
 
     def calculate_round_number(self):
         if Constants.min_matchup_id_round_64 <= self.matchup_id <= Constants.max_matchup_id_round_64:
@@ -188,11 +209,13 @@ class ActualMatchup:
 
 
 class Team:
-    def __init__(self, name, seed, team_id):
-        self.name = name
+    def __init__(self, team_name, seed, team_id, abbrev, logo_file):
+        self.name = team_name
         self.seed = seed
         self.team_id = team_id
         self.region = calculate_team_region(team_id)
+        self.abbrev = abbrev
+        self.logo_file = logo_file
         self.adjusted_seed = self.seed + int((team_id - 1) / 16) / 4
 
     def __repr__(self):
@@ -336,6 +359,9 @@ if __name__ == "__main__":
 
     colors = 'black'
     area = 10
+
+    fig, ax = plt.subplots()
+
     # plt.scatter(x, y, s=area, c=colors, alpha=0.5)
     plt.errorbar(x, means, std / 2, fmt='ok', ecolor='gray', lw=3)
     plt.errorbar(x, means, [means - mins, maxes - means], fmt='.k', ecolor='gray', lw=1, capsize=3)
@@ -344,4 +370,15 @@ if __name__ == "__main__":
     plt.xlabel('Team Seed')
     plt.ylim([-1, 7])
     plt.ylabel('Predicted Wins')
+
+    arr_gonz = mpimg.imread('icons/GONZ.png')
+    imagebox_gonz = OffsetImage(arr_gonz, zoom=0.5)
+    ab = AnnotationBbox(imagebox_gonz, (1, -0.5), bboxprops=dict(edgecolor='red'))
+    ax.add_artist(ab)
+
+    arr_pur = mpimg.imread('icons/PUR.png')
+    imagebox_pur = OffsetImage(arr_pur, zoom=0.5)
+    ab = AnnotationBbox(imagebox_pur, (1.25, -0.5), bboxprops=dict(edgecolor='white'))
+    ax.add_artist(ab)
+
     plt.show()
