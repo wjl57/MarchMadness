@@ -84,8 +84,8 @@ def calculate_team_region(team_id):
 
 def extract_picks(content, matchup_id_min, matchup_id_max):
     predicted_winners = []
-    for matchup in extract_matchup_divs(content, matchup_id_min, matchup_id_max):
-        slots = matchup.find_all("div", "slot")
+    for matchup_div in extract_matchup_divs(content, matchup_id_min, matchup_id_max):
+        slots = matchup_div.find_all("div", "slot")
         for slot in slots:
             selected_to_advance = slot.find("span", {"class", "selectedToAdvance"})
             if selected_to_advance is not None:
@@ -104,6 +104,50 @@ def get_content_for(name):
     url = "http://fantasy.espn.com/tournament-challenge-bracket/" + str(Constants.YEAR) + "/en/entry?entryID=" + str(entries[name])
     page = requests.get(url, headers=headers)
     return page.content
+
+
+def extract_upsets(content, matchup_id_min, matchup_id_max):
+    games_predicted_correctly = 0
+    upset_predicted = 0
+    upset_predicted_correctly = 0
+    upset_score = 0
+    for matchup_div in extract_matchup_divs(content, matchup_id_min, matchup_id_max):
+        slot_1_div = matchup_div.select("div.slot.s_1")[0]
+        team_1_selected = slot_1_div.find("span", {"class", "selectedToAdvance"})
+        team_1_won = slot_1_div.select("span.actual.winner")
+        team_1_seed = int(slot_1_div.find("span", {"class": "seed"}).text)
+        team_1_name = slot_1_div.find("span", {"class": "name"}).text
+        slot_2_div = matchup_div.select("div.slot.s_2")[0]
+        team_2_selected = slot_2_div.find("span", {"class", "selectedToAdvance"})
+        team_2_won = slot_2_div.select("span.actual.winner")
+        team_2_seed = int(slot_2_div.find("span", {"class": "seed"}).text)
+        team_2_name = slot_2_div.find("span", {"class": "name"}).text
+        predicted_upset = team_1_seed > team_2_seed if team_1_selected else team_2_seed > team_1_seed
+        game_predicted_correctly = (team_1_won and team_1_selected) or (team_2_won and team_2_selected)
+        if game_predicted_correctly:
+            games_predicted_correctly += 1
+        if predicted_upset:
+            upset_predicted += 1
+            print("Predicted upset: " + team_1_name + " (" + str(team_1_seed) + ") vs " + team_2_name + " (" + str(team_2_seed) + ")")
+            if game_predicted_correctly:
+                upset_predicted_correctly += 1
+                upset_score_delta = abs(team_2_seed - team_1_seed)
+                upset_score += upset_score_delta
+                print("Prediction correct! Worth " + str(upset_score_delta))
+    return games_predicted_correctly, upset_predicted, upset_predicted_correctly, upset_score
+        # if team_1_selected and team_1_won:
+        #     games_predicted_correctly += 1
+        #     print("Winner predicted! " + team_1_name + " " + "(" + str(team_1_seed) + ")")
+        #     if team_1_seed > team_2_seed:
+        #         print("It was an upset!")
+        #         upset_predicted_correctly += 1
+        #         upset_score += (team_1_seed - team_2_seed)
+        # if team_2_selected and team_2_won:
+        #     print("Winner predicted! " + team_2_name + " " + "(" + str(team_2_seed) + ")")
+        #     if team_2_seed > team_1_seed:
+        #         print("It was an upset!")
+        #         upset_predicted_correctly += 1
+        #         upset_score += (team_2_seed - team_1_seed)
 
 
 class ActualMatchup:
@@ -129,9 +173,7 @@ class ActualMatchup:
 
     @staticmethod
     def calculate_team(slot_div):
-        print(slot_div)
         team_id_str = slot_div["data-teamid"]
-        print(team_id_str)
         team_id = int(team_id_str)
         actual_team_span = slot_div.find("span", {"class": "actual"})
         # print(actual_team_span)
@@ -217,7 +259,6 @@ class Team:
         self.team_id = team_id
         self.region = calculate_team_region(team_id)
         self.adjusted_seed = self.seed + int((team_id - 1) / 16) / 4
-        print(self.adjusted_seed)
 
     def __repr__(self):
         s = self.name + " (" + str(self.seed) + ")\n"
@@ -237,6 +278,11 @@ class Entry:
         content = get_content_for(name)
         self.content = content
         self.picks_counter = extract_all_picks_counter(content)
+        games_predicted_correctly, upset_predicted, upset_predicted_correctly, upset_score = extract_upsets(content, min_matchup_id_round_64, max_matchup_id_round_64)
+        print("Games predicted correctly: " + str(games_predicted_correctly))
+        print("Upsets predicted: " + str(upset_predicted))
+        print("Upsets predicted correctly: " + str(upset_predicted_correctly))
+        print("Upsets score: " + str(upset_score))
 
 
 class PredictedResults:
@@ -278,92 +324,92 @@ def display_scores(title, scores):
 set_all_teams()
 set_all_actual_matchups()
 
-print("TEAMS")
-print("------------------------------------------------------")
-for team in all_teams:
-    print(team)
-print("------------------------------------------------------")
-print()
-print()
-print("------------------------------------------------------")
-print("MATCHUPS")
-print("------------------------------------------------------")
-for actual_matchup in all_actual_matchups:
-    print(actual_matchup)
-
-print("------------------------------------------------------")
-print()
-print()
-
-west_scores = get_scores('West', 1, 1)
-print(display_scores('West', west_scores))
-east_scores = get_scores('East', 1, 1)
-print(display_scores('East', east_scores))
-south_scores = get_scores('South', 1, 1)
-print(display_scores('South', south_scores))
-midwest_scores = get_scores('Midwest', 1, 1)
-print(display_scores('Midwest', midwest_scores))
+# print("TEAMS")
+# print("------------------------------------------------------")
+# for team in all_teams:
+#     print(team)
+# print("------------------------------------------------------")
+# print()
+# print()
+# print("------------------------------------------------------")
+# print("MATCHUPS")
+# print("------------------------------------------------------")
+# for actual_matchup in all_actual_matchups:
+#     print(actual_matchup)
+#
+# print("------------------------------------------------------")
+# print()
+# print()
+#
+# west_scores = get_scores('West', 1, 1)
+# print(display_scores('West', west_scores))
+# east_scores = get_scores('East', 1, 1)
+# print(display_scores('East', east_scores))
+# south_scores = get_scores('South', 1, 1)
+# print(display_scores('South', south_scores))
+# midwest_scores = get_scores('Midwest', 1, 1)
+# print(display_scores('Midwest', midwest_scores))
 
 all_entries = []
 for name, bracket_id in entries.items():
+    print("------------------------------------------------------")
+    print(name)
+    print("------------------------------------------------------")
     entry = Entry(name, bracket_id)
     all_entries.append(entry)
-    print("------------------------------------------------------")
-    print(entry.name)
-    print("------------------------------------------------------")
     print(entry.picks_counter)
 
-all_predicted_results = []
-for team in all_teams:
-    predicted_wins_dict = {entry.name: entry.picks_counter[team.name] for entry in all_entries}
-    # predicted_wins = [entry.picks_counter[team.name] for entry in all_entries]
-    predicted_result = PredictedResults(team, predicted_wins_dict)
-    all_predicted_results.append(predicted_result)
-# Order predictions by seed number
-all_predicted_results = sorted(all_predicted_results, key=lambda pr: pr.team.seed)
-
-for predicted_result in all_predicted_results:
-    print(predicted_result)
-
-
-predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
-predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
-
-print("HIGHEST AVERAGE")
-for pr in predicted_result_average_wins[0:5]:
-    print(pr)
-
-print("HIGHEST STD DEV")
-for pr in predicted_result_std_dev[0:5]:
-    print(pr)
-
-print("LOWEST STD DEV")
-for pr in predicted_result_std_dev[-13:-8]:
-    print(pr)
-
-no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
-
-print("NO WINS")
-for pr in no_wins_predicted:
-    print(pr.team)
-
-
-x = np.array([pr.team.adjusted_seed for pr in all_predicted_results])
-means = np.array([pr.average_wins for pr in all_predicted_results])
-std = np.array([pr.std_dev for pr in all_predicted_results])
-print([pr.std_dev for pr in all_predicted_results])
-maxes = np.array([pr.max for pr in all_predicted_results])
-print([pr.max for pr in all_predicted_results])
-mins = np.array([pr.min for pr in all_predicted_results])
-
-colors = 'black'#np.random.rand(4)
-area = 10
-# plt.scatter(x, y, s=area, c=colors, alpha=0.5)
-plt.errorbar(x, means, std / 2, fmt='ok', ecolor='gray', lw=3)
-plt.errorbar(x, means, [means - mins, maxes - means], fmt='.k', ecolor='gray', lw=1, capsize=3)
-plt.xlim([0.75, 17])
-plt.xticks(range(1, 17))
-plt.xlabel('Team Seed')
-plt.ylim([-1, 7])
-plt.ylabel('Predicted Wins')
-plt.show()
+# all_predicted_results = []
+# for team in all_teams:
+#     predicted_wins_dict = {entry.name: entry.picks_counter[team.name] for entry in all_entries}
+#     # predicted_wins = [entry.picks_counter[team.name] for entry in all_entries]
+#     predicted_result = PredictedResults(team, predicted_wins_dict)
+#     all_predicted_results.append(predicted_result)
+# # Order predictions by seed number
+# all_predicted_results = sorted(all_predicted_results, key=lambda pr: pr.team.seed)
+#
+# for predicted_result in all_predicted_results:
+#     print(predicted_result)
+#
+#
+# predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
+# predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
+#
+# print("HIGHEST AVERAGE")
+# for pr in predicted_result_average_wins[0:5]:
+#     print(pr)
+#
+# print("HIGHEST STD DEV")
+# for pr in predicted_result_std_dev[0:5]:
+#     print(pr)
+#
+# print("LOWEST STD DEV")
+# for pr in predicted_result_std_dev[-13:-8]:
+#     print(pr)
+#
+# no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
+#
+# print("NO WINS")
+# for pr in no_wins_predicted:
+#     print(pr.team)
+#
+#
+# x = np.array([pr.team.adjusted_seed for pr in all_predicted_results])
+# means = np.array([pr.average_wins for pr in all_predicted_results])
+# std = np.array([pr.std_dev for pr in all_predicted_results])
+# print([pr.std_dev for pr in all_predicted_results])
+# maxes = np.array([pr.max for pr in all_predicted_results])
+# print([pr.max for pr in all_predicted_results])
+# mins = np.array([pr.min for pr in all_predicted_results])
+#
+# colors = 'black'#np.random.rand(4)
+# area = 10
+# # plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+# plt.errorbar(x, means, std / 2, fmt='ok', ecolor='gray', lw=3)
+# plt.errorbar(x, means, [means - mins, maxes - means], fmt='.k', ecolor='gray', lw=1, capsize=3)
+# plt.xlim([0.75, 17])
+# plt.xticks(range(1, 17))
+# plt.xlabel('Team Seed')
+# plt.ylim([-1, 7])
+# plt.ylabel('Predicted Wins')
+# plt.show()
