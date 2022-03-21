@@ -16,8 +16,6 @@ import matplotlib.image as mpimg
 import shutil
 from os.path import exists
 
-import math
-
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                   'Chrome/70.0.3538.110 Safari/537.36 '
@@ -138,13 +136,17 @@ class ActualMatchup:
             score_home_span = game_progress.select("span.score.home")[0]
             self.score_away = int(score_away_span.text)
             self.score_home = int(score_home_span.text)
-            self.team_1 = calculate_team(self.matchup_div.select("div.slot.s_1")[0])
-            self.team_2 = calculate_team(self.matchup_div.select("div.slot.s_2")[0])
+            slot_1_div = self.matchup_div.select("div.slot.s_1")[0]
+            slot_2_div = self.matchup_div.select("div.slot.s_2")[0]
+            self.team_1 = calculate_team(slot_1_div)
+            self.team_2 = calculate_team(slot_2_div)
+            self.winner = self.team_1 if slot_1_div.select("span.actual.winner") else self.team_2
         else:
             self.score_away = None
             self.score_home = None
             self.team_1 = None
             self.team_2 = None
+            self.winner = None
 
     def calculate_round_number(self):
         if Constants.min_matchup_id_round_64 <= self.matchup_id <= Constants.max_matchup_id_round_64:
@@ -201,6 +203,7 @@ class ActualMatchup:
             s += str(self.team_1) + " vs " + str(self.team_2) + "\n"
         if self.game_complete:
             s += "Final Score: " + str(self.score_away) + " to " + str(self.score_home) + "\n"
+            s += "Won by " + str(self.winner) + "\n"
         else:
             s += "Game not started yet\n"
         # s += "Team ID: " + str(self.team_id) + ", "
@@ -274,8 +277,8 @@ def display_scores(title, scores):
     return s
 
 
-def generate_team_plot():
-    x = np.array([pr.team.adjusted_seed for pr in all_predicted_results])
+def generate_team_plot(all_predicted_results, all_actual_matchups):
+    adjusted_seeds = np.array([pr.team.adjusted_seed for pr in all_predicted_results])
     means = np.array([pr.average_wins for pr in all_predicted_results])
     std = np.array([pr.std_dev for pr in all_predicted_results])
     print([pr.std_dev for pr in all_predicted_results])
@@ -283,14 +286,22 @@ def generate_team_plot():
     print([pr.max for pr in all_predicted_results])
     mins = np.array([pr.min for pr in all_predicted_results])
 
-    colors = 'black'
-    area = 10
+    actual_winners = [am.winner.name for am in all_actual_matchups if am.winner is not None]
+    print(actual_winners)
+    actual_team_wins_counter = Counter(actual_winners)
+    print(actual_team_wins_counter)
+    # print("GONZ")
+    # print(actual_team_wins_counter['Gonzaga'])
+    # print("UConn")
+    # print(actual_team_wins_counter['UConn'])
+    actual_wins_by_team = [actual_team_wins_counter[pr.team.name] for pr in all_predicted_results]
 
     fig, ax = plt.subplots()
 
-    # plt.scatter(x, y, s=area, c=colors, alpha=0.5)
-    plt.errorbar(x, means, std / 2, fmt='ok', ecolor='gray', lw=3)
-    plt.errorbar(x, means, [means - mins, maxes - means], fmt='.k', ecolor='gray', lw=1, capsize=3)
+    plt.errorbar(adjusted_seeds, means, 0.5 * std, fmt='ok', ecolor='gray', lw=2)  # 0.67448 is middle 50%
+    plt.errorbar(adjusted_seeds, means, [means - mins, maxes - means], fmt='.k', ecolor='gray', lw=1, capsize=3)
+    plt.scatter(adjusted_seeds, actual_wins_by_team, c='C0', marker='*')
+
     plt.xlim([0.75, 17])
     plt.xticks(range(1, 17))
     plt.xlabel('Team Seed')
@@ -301,7 +312,7 @@ def generate_team_plot():
     for idx, pr in enumerate(all_predicted_results):
         arr_team = mpimg.imread(pr.team.logo_file)
         imagebox_team = OffsetImage(arr_team, zoom=0.5)
-        ab = AnnotationBbox(imagebox_team, (x[idx], -0.5), bboxprops=dict(edgecolor='white'))
+        ab = AnnotationBbox(imagebox_team, (adjusted_seeds[idx], -0.5), bboxprops=dict(edgecolor='white'))
         ax.add_artist(ab)
 
     plt.show()
@@ -331,14 +342,14 @@ if __name__ == "__main__":
     print()
     print()
 
-    west_scores = get_scores('West', 1, 1)
-    print(display_scores('West', west_scores))
-    east_scores = get_scores('East', 1, 1)
-    print(display_scores('East', east_scores))
-    south_scores = get_scores('South', 1, 1)
-    print(display_scores('South', south_scores))
-    midwest_scores = get_scores('Midwest', 1, 1)
-    print(display_scores('Midwest', midwest_scores))
+    # west_scores = get_scores('West', 1, 1)
+    # print(display_scores('West', west_scores))
+    # east_scores = get_scores('East', 1, 1)
+    # print(display_scores('East', east_scores))
+    # south_scores = get_scores('South', 1, 1)
+    # print(display_scores('South', south_scores))
+    # midwest_scores = get_scores('Midwest', 1, 1)
+    # print(display_scores('Midwest', midwest_scores))
 
     all_entries = []
     for name, bracket_id in entries.items():
@@ -357,29 +368,30 @@ if __name__ == "__main__":
         all_predicted_results.append(predicted_result)
     # Order predictions by seed number
     all_predicted_results = sorted(all_predicted_results, key=lambda pr: pr.team.seed)
+    #
+    # for predicted_result in all_predicted_results:
+    #     print(predicted_result)
+    #
+    # predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
+    # predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
+    #
+    # print("HIGHEST AVERAGE")
+    # for pr in predicted_result_average_wins[0:5]:
+    #     print(pr)
+    #
+    # print("HIGHEST STD DEV")
+    # for pr in predicted_result_std_dev[0:5]:
+    #     print(pr)
+    #
+    # print("LOWEST STD DEV")
+    # for pr in predicted_result_std_dev[-13:-8]:
+    #     print(pr)
+    #
+    # no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
+    #
+    # print("NO WINS")
+    # for pr in no_wins_predicted:
+    #     print(pr.team)
+    #
 
-    for predicted_result in all_predicted_results:
-        print(predicted_result)
-
-    predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
-    predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
-
-    print("HIGHEST AVERAGE")
-    for pr in predicted_result_average_wins[0:5]:
-        print(pr)
-
-    print("HIGHEST STD DEV")
-    for pr in predicted_result_std_dev[0:5]:
-        print(pr)
-
-    print("LOWEST STD DEV")
-    for pr in predicted_result_std_dev[-13:-8]:
-        print(pr)
-
-    no_wins_predicted = filter(lambda pr: pr.max == 0, all_predicted_results)
-
-    print("NO WINS")
-    for pr in no_wins_predicted:
-        print(pr.team)
-
-    generate_team_plot()
+    generate_team_plot(all_predicted_results, all_actual_matchups)
