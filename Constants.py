@@ -1,3 +1,17 @@
+total_teams = 64
+min_matchup_id_round_64 = 0
+max_matchup_id_round_64 = 31
+min_matchup_id_round_32 = max_matchup_id_round_64 + 1
+max_matchup_id_round_32 = max_matchup_id_round_64 + 16
+min_matchup_id_sweet_16 = max_matchup_id_round_32 + 1
+max_matchup_id_sweet_16 = max_matchup_id_round_32 + 8
+min_matchup_id_elite_8 = max_matchup_id_sweet_16 + 1
+max_matchup_id_elite_8 = max_matchup_id_sweet_16 + 4
+min_matchup_id_final_4 = max_matchup_id_elite_8 + 1
+max_matchup_id_final_4 = max_matchup_id_elite_8 + 2
+championship_matchup_id = max_matchup_id_final_4 + 1
+
+
 YEAR = 2022
 
 ENTRIES = {
