@@ -216,6 +216,8 @@ class Team:
         self.seed = seed
         self.team_id = team_id
         self.region = calculate_team_region(team_id)
+        self.adjusted_seed = self.seed + int((team_id - 1) / 16) / 4
+        print(self.adjusted_seed)
 
     def __repr__(self):
         s = self.name + " (" + str(self.seed) + ")\n"
@@ -346,9 +348,17 @@ for pr in no_wins_predicted:
     print(pr.team)
 
 
-x = [pr.team.seed for pr in all_predicted_results]
-y = [pr.average_wins for pr in all_predicted_results]
+x = np.array([pr.team.adjusted_seed for pr in all_predicted_results])
+means = np.array([pr.average_wins for pr in all_predicted_results])
+std = np.array([pr.std_dev for pr in all_predicted_results])
+print([pr.std_dev for pr in all_predicted_results])
+maxes = np.array([pr.max for pr in all_predicted_results])
+print([pr.max for pr in all_predicted_results])
+mins = np.array([pr.min for pr in all_predicted_results])
+
 colors = 'black'#np.random.rand(4)
 area = 10
-plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+# plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+plt.errorbar(x, means, std / 2, fmt='ok', ecolor='gray', lw=3)
+plt.errorbar(x, means, [means - mins, maxes - means], fmt='.k', ecolor='gray', lw=1, capsize=3)
 plt.show()
