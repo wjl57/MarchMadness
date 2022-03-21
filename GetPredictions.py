@@ -274,6 +274,47 @@ def display_scores(title, scores):
     return s
 
 
+def generate_team_plot():
+    x = np.array([pr.team.adjusted_seed for pr in all_predicted_results])
+    means = np.array([pr.average_wins for pr in all_predicted_results])
+    std = np.array([pr.std_dev for pr in all_predicted_results])
+    print([pr.std_dev for pr in all_predicted_results])
+    maxes = np.array([pr.max for pr in all_predicted_results])
+    print([pr.max for pr in all_predicted_results])
+    mins = np.array([pr.min for pr in all_predicted_results])
+
+    colors = 'black'
+    area = 10
+
+    fig, ax = plt.subplots()
+
+    # plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+    plt.errorbar(x, means, std / 2, fmt='ok', ecolor='gray', lw=3)
+    plt.errorbar(x, means, [means - mins, maxes - means], fmt='.k', ecolor='gray', lw=1, capsize=3)
+    plt.xlim([0.75, 17])
+    plt.xticks(range(1, 17))
+    plt.xlabel('Team Seed')
+    plt.ylim([-1, 7])
+    plt.ylabel('Predicted Wins')
+
+    for idx, pr in enumerate(all_predicted_results):
+        arr_team = mpimg.imread(pr.team.logo_file)
+        imagebox_team = OffsetImage(arr_team, zoom=0.5)
+        ab = AnnotationBbox(imagebox_team, (x[idx], -0.5), bboxprops=dict(edgecolor='white'))
+        ax.add_artist(ab)
+    # arr_gonz =
+    # imagebox_gonz = OffsetImage(arr_gonz, zoom=0.5)
+    # ab = AnnotationBbox(imagebox_gonz, (1, -0.5), bboxprops=dict(edgecolor='red'))
+    # ax.add_artist(ab)
+    #
+    # arr_pur = mpimg.imread('icons/PUR.png')
+    # imagebox_pur = OffsetImage(arr_pur, zoom=0.5)
+    # ab = AnnotationBbox(imagebox_pur, (1.25, -0.5), bboxprops=dict(edgecolor='white'))
+    # ax.add_artist(ab)
+
+    plt.show()
+
+
 if __name__ == "__main__":
     set_all_teams()
     set_all_actual_matchups()
@@ -349,36 +390,4 @@ if __name__ == "__main__":
     for pr in no_wins_predicted:
         print(pr.team)
 
-    x = np.array([pr.team.adjusted_seed for pr in all_predicted_results])
-    means = np.array([pr.average_wins for pr in all_predicted_results])
-    std = np.array([pr.std_dev for pr in all_predicted_results])
-    print([pr.std_dev for pr in all_predicted_results])
-    maxes = np.array([pr.max for pr in all_predicted_results])
-    print([pr.max for pr in all_predicted_results])
-    mins = np.array([pr.min for pr in all_predicted_results])
-
-    colors = 'black'
-    area = 10
-
-    fig, ax = plt.subplots()
-
-    # plt.scatter(x, y, s=area, c=colors, alpha=0.5)
-    plt.errorbar(x, means, std / 2, fmt='ok', ecolor='gray', lw=3)
-    plt.errorbar(x, means, [means - mins, maxes - means], fmt='.k', ecolor='gray', lw=1, capsize=3)
-    plt.xlim([0.75, 17])
-    plt.xticks(range(1, 17))
-    plt.xlabel('Team Seed')
-    plt.ylim([-1, 7])
-    plt.ylabel('Predicted Wins')
-
-    arr_gonz = mpimg.imread('icons/GONZ.png')
-    imagebox_gonz = OffsetImage(arr_gonz, zoom=0.5)
-    ab = AnnotationBbox(imagebox_gonz, (1, -0.5), bboxprops=dict(edgecolor='red'))
-    ax.add_artist(ab)
-
-    arr_pur = mpimg.imread('icons/PUR.png')
-    imagebox_pur = OffsetImage(arr_pur, zoom=0.5)
-    ab = AnnotationBbox(imagebox_pur, (1.25, -0.5), bboxprops=dict(edgecolor='white'))
-    ax.add_artist(ab)
-
-    plt.show()
+    generate_team_plot()
