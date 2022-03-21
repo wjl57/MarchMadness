@@ -295,22 +295,14 @@ def generate_team_plot():
     plt.xticks(range(1, 17))
     plt.xlabel('Team Seed')
     plt.ylim([-1, 7])
-    plt.ylabel('Predicted Wins')
+    plt.ylabel('Wins')
+    ax.set_title('Predicted Wins by Team')
 
     for idx, pr in enumerate(all_predicted_results):
         arr_team = mpimg.imread(pr.team.logo_file)
         imagebox_team = OffsetImage(arr_team, zoom=0.5)
         ab = AnnotationBbox(imagebox_team, (x[idx], -0.5), bboxprops=dict(edgecolor='white'))
         ax.add_artist(ab)
-    # arr_gonz =
-    # imagebox_gonz = OffsetImage(arr_gonz, zoom=0.5)
-    # ab = AnnotationBbox(imagebox_gonz, (1, -0.5), bboxprops=dict(edgecolor='red'))
-    # ax.add_artist(ab)
-    #
-    # arr_pur = mpimg.imread('icons/PUR.png')
-    # imagebox_pur = OffsetImage(arr_pur, zoom=0.5)
-    # ab = AnnotationBbox(imagebox_pur, (1.25, -0.5), bboxprops=dict(edgecolor='white'))
-    # ax.add_artist(ab)
 
     plt.show()
 
