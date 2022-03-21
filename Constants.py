@@ -22,7 +22,7 @@ ENTRIES = {
         "Breton": 64261292,
         "Louis": 65511775,
         "Vitaliy": 65326118,
-        "JinWang": 63398705,
+        "Jin Wang": 63398705,
         "Ted": 63894438,
         "Jared": 69932613,
         "Thomas": 57461192,

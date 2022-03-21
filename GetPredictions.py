@@ -305,7 +305,6 @@ if __name__ == "__main__":
     for predicted_result in all_predicted_results:
         print(predicted_result)
 
-
     predicted_result_average_wins = sorted(all_predicted_results, key=lambda pr: pr.average_wins, reverse=True)
     predicted_result_std_dev = sorted(all_predicted_results, key=lambda pr: pr.std_dev, reverse=True)
 
@@ -326,7 +325,6 @@ if __name__ == "__main__":
     print("NO WINS")
     for pr in no_wins_predicted:
         print(pr.team)
-
 
     x = np.array([pr.team.adjusted_seed for pr in all_predicted_results])
     means = np.array([pr.average_wins for pr in all_predicted_results])
