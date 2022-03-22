@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from collections import Counter
 import statistics
 
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox, TextArea
 
 import Constants
 import numpy as np
@@ -219,7 +219,7 @@ class Team:
         self.region = calculate_team_region(team_id)
         self.abbrev = abbrev
         self.logo_file = logo_file
-        self.adjusted_seed = self.seed + int((team_id - 1) / 16) / 4
+        self.adjusted_seed = self.seed + int((team_id - 1) / 16) / 4 + 0.125
 
     def __repr__(self):
         s = self.name + " (" + str(self.seed) + ")\n"
@@ -273,48 +273,62 @@ def get_scores(region, min_round, max_round):
 
 
 def display_scores(title, scores):
-    s = title + ": " + str(scores) + " Total: " + str(sum(scores)) + ", Average: " + str(sum(scores)/len(scores))
+    s = title + ": " + str(scores) + " Total: " + str(sum(scores)) + ", Average: " + str(sum(scores) / len(scores))
     return s
 
 
 def generate_team_plot(all_predicted_results, all_actual_matchups):
     adjusted_seeds = np.array([pr.team.adjusted_seed for pr in all_predicted_results])
-    means = np.array([pr.average_wins for pr in all_predicted_results])
-    std = np.array([pr.std_dev for pr in all_predicted_results])
-    print([pr.std_dev for pr in all_predicted_results])
-    maxes = np.array([pr.max for pr in all_predicted_results])
-    print([pr.max for pr in all_predicted_results])
-    mins = np.array([pr.min for pr in all_predicted_results])
-
-    actual_winners = [am.winner.name for am in all_actual_matchups if am.winner is not None]
-    print(actual_winners)
-    actual_team_wins_counter = Counter(actual_winners)
-    print(actual_team_wins_counter)
-    # print("GONZ")
-    # print(actual_team_wins_counter['Gonzaga'])
-    # print("UConn")
-    # print(actual_team_wins_counter['UConn'])
-    actual_wins_by_team = [actual_team_wins_counter[pr.team.name] for pr in all_predicted_results]
-
+    columns = [pr.predicted_wins for pr in all_predicted_results]
     fig, ax = plt.subplots()
 
-    plt.errorbar(adjusted_seeds, means, 0.5 * std, fmt='ok', ecolor='gray', lw=2)  # 0.67448 is middle 50%
-    plt.errorbar(adjusted_seeds, means, [means - mins, maxes - means], fmt='.k', ecolor='gray', lw=1, capsize=3)
-    plt.scatter(adjusted_seeds, actual_wins_by_team, c='C0', marker='*')
-
-    plt.xlim([0.75, 17])
-    plt.xticks(range(1, 17))
-    plt.xlabel('Team Seed')
-    plt.ylim([-1, 7])
-    plt.ylabel('Wins')
-    ax.set_title('Predicted Wins by Team')
-
+    # Include team logos
     for idx, pr in enumerate(all_predicted_results):
         arr_team = mpimg.imread(pr.team.logo_file)
         imagebox_team = OffsetImage(arr_team, zoom=0.5)
-        ab = AnnotationBbox(imagebox_team, (adjusted_seeds[idx], -0.5), bboxprops=dict(edgecolor='white'))
+        ab = AnnotationBbox(imagebox_team, (adjusted_seeds[idx], -0.2), bboxprops=dict(edgecolor='white'))
         ax.add_artist(ab)
 
+    # Include predictions as a boxplot
+    medianprops = dict(linestyle='None', linewidth=2.5, color='firebrick')
+    meanlineprops = dict(linestyle='-', linewidth=2.5, color='C3')
+    bplot = ax.boxplot(columns, whis=(0, 100), widths=0.25 / 5, meanline=True, showmeans=True, medianprops=medianprops, meanprops=meanlineprops,
+                       positions=adjusted_seeds, patch_artist=True, zorder=2)
+    for patch in bplot['boxes']:
+        patch.set(color='C0', linewidth=2)
+
+    # Include horizontal dotted lines for historical wins by seed
+    historical_wins_by_seed = [3.361, 2.354, 1.847, 1.514, 1.119, 1.07, 0.902, 0.709, 0.591, 0.619, 0.64, 0.521, 0.257, 0.167, 0.077, 0.007]
+    plt.hlines(historical_wins_by_seed, np.arange(1, 17, 1), np.arange(2, 18, 1), colors='C1', linestyles='dotted', zorder=1, label='Historical wins per seed')
+
+    # Include actual wins by team so far
+    actual_winners = [am.winner.name for am in all_actual_matchups if am.winner is not None]
+    actual_team_wins_counter = Counter(actual_winners)
+    actual_wins_by_team = [actual_team_wins_counter[pr.team.name] for pr in all_predicted_results]
+    max_wins_so_far = 2
+    # plt.scatter(adjusted_seeds, actual_wins_by_team, c=['C3' if w < max_wins_so_far else 'C2' for w in actual_wins_by_team], marker='X', zorder=4, label='Actual Wins (so far)')
+    plt.scatter(adjusted_seeds, actual_wins_by_team, c='C2', marker='D', s=25, zorder=3, label='Actual Wins (so far)')
+
+    # Include flavor text
+    stpeters = next(pr for pr in all_predicted_results if pr.team.abbrev == 'SPU')
+    stpeters_wins = actual_team_wins_counter[stpeters.team.name]
+    plt.annotate('Sponsored by\nNBC Peacock!',
+                 xy=(stpeters.team.adjusted_seed, stpeters_wins),
+                 xytext=(0.5, 20),
+                 textcoords='offset points',
+                 weight='bold',
+                 ha='center',
+                 va="center"
+                 )
+
+    # Set axis
+    ax.set_title('Predicted Wins by Team')
+    ax.set_xlabel("Seed", labelpad=10)
+    ax.set_ylabel("Predicted Wins", labelpad=10)
+    ax.set_ylim(-1, 7)
+    ax.set_xticks(range(1, 17))
+    ax.set_xticklabels(range(1, 17))
+    leg = ax.legend()
     plt.show()
 
 

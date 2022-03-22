@@ -11,5 +11,10 @@ x = np.linspace ( start = 0.    # lower limit
                 , num = 51      # generate 51 points between 0 and 3
                 )
 y = f(x)    # This is already vectorized, that is, y will be a vector!
-plt.plot(x, y)
+
+fig, ax = plt.subplots()
+ax.boxplot([0, 0, 0, 0, 0, 0, 0, 1, 6])
 plt.show()
+
+# plt.plot(x, y)
+# plt.show()
